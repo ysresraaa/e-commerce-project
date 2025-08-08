@@ -3,9 +3,12 @@ package com.esrayasar.e_commerce.project.controller;
 import com.esrayasar.e_commerce.project.dto.ProductCreateDTO;
 import com.esrayasar.e_commerce.project.dto.ProductResponseDTO;
 import com.esrayasar.e_commerce.project.dto.ProductUpdateDTO;
+import com.esrayasar.e_commerce.project.entity.Category;
 import com.esrayasar.e_commerce.project.entity.Product;
+import com.esrayasar.e_commerce.project.service.ICategoryService;
 import com.esrayasar.e_commerce.project.service.IProductService;
 import jakarta.validation.Valid;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,31 +23,61 @@ import java.util.stream.Collectors;
 public class ProductController {
 
     private final IProductService productService;
+    private final ICategoryService categoryService;
+    private final ModelMapper modelMapper;
 
     @Autowired
-    public ProductController(IProductService productService) {
+    public ProductController(IProductService productService, ICategoryService categoryService, ModelMapper modelMapper) {
         this.productService = productService;
+        this.categoryService = categoryService;
+        this.modelMapper = modelMapper;
     }
 
     @PostMapping
     public ResponseEntity<ProductResponseDTO> createProduct(@Valid @RequestBody ProductCreateDTO productCreateDTO, BindingResult bindingResult) {
         if (bindingResult.hasErrors()) {
-
             throw new IllegalArgumentException(bindingResult.getAllErrors().stream()
                     .map(error -> error.getDefaultMessage())
                     .collect(Collectors.joining(", ")));
         }
 
-        Product savedProduct = convertToEntity(productCreateDTO);
-        Product savedProductResult = productService.saveProduct(savedProduct);
-        return new ResponseEntity<>(convertToResponseDTO(savedProductResult), HttpStatus.CREATED);
+        Category category = categoryService.getCategoryById(productCreateDTO.getCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException("Category not found with id: " + productCreateDTO.getCategoryId()));
+
+        Product product = modelMapper.map(productCreateDTO, Product.class);
+        product.setCategory(category);
+
+        Product savedProduct = productService.saveProduct(product);
+        ProductResponseDTO productResponseDTO = modelMapper.map(savedProduct, ProductResponseDTO.class);
+
+        return new ResponseEntity<>(productResponseDTO, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ProductResponseDTO> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductUpdateDTO productUpdateDTO, BindingResult bindingResult) {
+        if (bindingResult.hasErrors()) {
+            throw new IllegalArgumentException(bindingResult.getAllErrors().stream()
+                    .map(error -> error.getDefaultMessage())
+                    .collect(Collectors.joining(", ")));
+        }
+
+        Category category = categoryService.getCategoryById(productUpdateDTO.getCategoryId())
+                .orElseThrow(() -> new IllegalArgumentException("Category not found with id: " + productUpdateDTO.getCategoryId()));
+
+        Product product = modelMapper.map(productUpdateDTO, Product.class);
+        product.setId(id);
+        product.setCategory(category);
+
+        Product updatedProduct = productService.updateProduct(id, product);
+        ProductResponseDTO productResponseDTO = modelMapper.map(updatedProduct, ProductResponseDTO.class);
+        return ResponseEntity.ok(productResponseDTO);
     }
 
     @GetMapping
     public ResponseEntity<List<ProductResponseDTO>> getAllProducts() {
         List<Product> products = productService.getAllProducts();
         List<ProductResponseDTO> productResponseDTOs = products.stream()
-                .map(this::convertToResponseDTO)
+                .map(product -> modelMapper.map(product, ProductResponseDTO.class))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(productResponseDTOs);
     }
@@ -52,59 +85,13 @@ public class ProductController {
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponseDTO> getProductById(@PathVariable Long id) {
         return productService.getProductById(id)
-                .map(product -> ResponseEntity.ok(convertToResponseDTO(product)))
+                .map(product -> ResponseEntity.ok(modelMapper.map(product, ProductResponseDTO.class)))
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<ProductResponseDTO> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductUpdateDTO productUpdateDTO, BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-
-            throw new IllegalArgumentException(bindingResult.getAllErrors().stream()
-                    .map(error -> error.getDefaultMessage())
-                    .collect(Collectors.joining(", ")));
-        }
-
-        Product updatedProduct = convertToEntity(productUpdateDTO); // DTO'yu entity'ye çevir
-        updatedProduct.setId(id); // ID'yi ayarla
-        Product updatedProductResult = productService.updateProduct(id, updatedProduct);
-        return ResponseEntity.ok(convertToResponseDTO(updatedProductResult));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
-    }
-
-
-    private Product convertToEntity(ProductCreateDTO productCreateDTO) {
-        Product product = new Product();
-        product.setName(productCreateDTO.getName());
-        product.setDescription(productCreateDTO.getDescription());
-        product.setPrice(productCreateDTO.getPrice());
-        product.setStockQuantity(productCreateDTO.getStockQuantity());
-        return product;
-    }
-
-    private Product convertToEntity(ProductUpdateDTO productUpdateDTO) {
-        Product product = new Product();
-        product.setName(productUpdateDTO.getName());
-        product.setDescription(productUpdateDTO.getDescription());
-        product.setPrice(productUpdateDTO.getPrice());
-        product.setStockQuantity(productUpdateDTO.getStockQuantity());
-        return product;
-    }
-
-
-
-    private ProductResponseDTO convertToResponseDTO(Product product) {
-        ProductResponseDTO responseDTO = new ProductResponseDTO();
-        responseDTO.setId(product.getId());
-        responseDTO.setName(product.getName());
-        responseDTO.setDescription(product.getDescription());
-        responseDTO.setPrice(product.getPrice());
-        responseDTO.setStockQuantity(product.getStockQuantity());
-        return responseDTO;
     }
 }

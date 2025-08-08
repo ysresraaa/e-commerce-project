@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Entity
 @Table(name="products")
@@ -36,6 +37,10 @@ public class Product {
     @Min(value = 0, message = "Stock quantity cannot be negative")
     @Column(name="stock_quantity")
     private int stockQuantity;
+
+    @ManyToOne
+    @JoinColumn(name="category_id",nullable=false)
+    private Category category;
 
 
 

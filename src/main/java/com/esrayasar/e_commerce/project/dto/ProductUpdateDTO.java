@@ -15,6 +15,8 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 public class ProductUpdateDTO {
 
+    private Long categoryId;
+
     @NotBlank(message="product name connot be blank")
     @Size(min=2,max=255,message="Product  name must be between 2 and 255 characters")
     private String name;
