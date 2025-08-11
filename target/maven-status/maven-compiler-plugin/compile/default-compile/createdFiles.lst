@@ -1,0 +1,6 @@
+com\esrayasar\e_commerce\project\ECommerceProjectApplication.class
+com\esrayasar\e_commerce\project\repository\IProductRepository.class
+com\esrayasar\e_commerce\project\entity\Product.class
+com\esrayasar\e_commerce\project\controller\ProductController.class
+com\esrayasar\e_commerce\project\service\IProductService.class
+com\esrayasar\e_commerce\project\service\ProductServiceImpl.class
